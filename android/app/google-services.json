@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "201953565667",
+    "project_id": "labeeb-app-2026",
+    "storage_bucket": "labeeb-app-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:201953565667:android:4ca9c7f72a468fb6a99ed6",
+        "android_client_info": {
+          "package_name": "com.example.labeeb_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXeH4hx2PUK-j_B2YDslA03_Mnk_ngXbw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
