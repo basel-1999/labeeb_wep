@@ -63,6 +63,7 @@ class SessionCheckService {
 
   /// 1. تهيئة محرك الاتصال الصوتي
   /// 1. تهيئة محرك الاتصال الصوتي
+  /// 1. تهيئة محرك الاتصال الصوتي
   static Future<void> initAudioEngine() async {
     if (_agoraEngine != null) return;
 
@@ -75,9 +76,8 @@ class SessionCheckService {
         ),
       );
 
-      // ✨ يجب تفعيل الفيديو مع الصوت على الويب وإلا ينهار المحرك ويعطي خطأ Null check
+      // ✨ تفعيل الصوت فقط بشكل آمن للويب
       await _agoraEngine!.enableAudio();
-      await _agoraEngine!.enableVideo();
       await _agoraEngine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
     } catch (e) {
       debugPrint("Agora initialization error: $e");
@@ -85,6 +85,7 @@ class SessionCheckService {
     }
   }
 
+  /// 2. الانضمام إلى غرفة الصوت الخاصة بالجلسة
   /// 2. الانضمام إلى غرفة الصوت الخاصة بالجلسة
   /// 2. الانضمام إلى غرفة الصوت الخاصة بالجلسة
   static Future<void> joinAudioChannel({
@@ -97,13 +98,17 @@ class SessionCheckService {
         : DateTime.now().millisecondsSinceEpoch % 100000;
 
     final String activeToken = token ?? await fetchDynamicToken(channelName: sessionId, uid: numericUid);
-    print("Fetched Token: $activeToken"); // لطباعة التوكن للتأكد من نجاح جلبه
+    print("Fetched Token: $activeToken");
 
     if (_agoraEngine == null) {
       await initAudioEngine();
     }
 
+    // ✨ أضف هذا السطر هنا للحماية:
+    if (_agoraEngine == null) return;
+
     try {
+      // ... باقي الكود يبقى كما هو
       await _agoraEngine!.setClientRole(
         role: ClientRoleType.clientRoleBroadcaster,
       );
@@ -190,11 +195,15 @@ class SessionCheckService {
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة (يدعم الويب والموبايل بدون أكواد JS)
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة (يدعم الويب والموبايل بدون أكواد JS)
   static Future<bool> toggleScreenShare(bool enable, {String sessionId = '', String? token}) async {
     if (_agoraEngine == null) return false;
 
     try {
       if (enable) {
+        // ✨ تفعيل الفيديو فقط عند الحاجة لمشاركة الشاشة
+        await _agoraEngine!.enableVideo();
+
         // 🟢 استخدام الـ SDK الأصلي للمتصفح (لا حاجة لأكواد JS)
         await _agoraEngine!.startScreenCapture(
           const ScreenCaptureParameters2(
@@ -226,7 +235,6 @@ class SessionCheckService {
       return !enable;
     }
   }
-
   /// 4. مغادرة قناة الصوت وتفريغ الموارد
   static Future<void> leaveAndReleaseAudio() async {
     if (_agoraEngine != null) {
