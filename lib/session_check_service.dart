@@ -38,11 +38,12 @@ class SessionCheckService {
 
   /// 🛠️ دالة جلب Token ديناميكي من سيرفر Node.js
   /// 🛠️ دالة جلب Token ديناميكي من سيرفر Node.js
+  /// 🛠️ دالة جلب Token ديناميكي من سيرفر Node.js
+  /// 🛠️ دالة جلب Token ديناميكي من سيرفر Node.js
   static Future<String> fetchDynamicToken({required String channelName, required int uid}) async {
     try {
-      // ⚠️ ضع رابط السيرفر الحقيقي هنا بدلاً من localhost عند رفع المنصة
-      // مثال: 'https://your-agora-server.onrender.com'
-      const String serverBaseUrl = 'http://localhost:3000';
+      // ✨ رابط السيرفر الحقيقي على Render
+      const String serverBaseUrl = 'https://agora-server-59qz.onrender.com';
 
       final String serverUrl = '$serverBaseUrl/rtc-token?channelName=$channelName&uid=$uid';
       final response = await http.get(Uri.parse(serverUrl));

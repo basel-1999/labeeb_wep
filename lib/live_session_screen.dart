@@ -334,21 +334,25 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
     if (!widget.isTeacher) return;
     try {
       bool newState = !isScreenSharing;
+
+      // ✨ الحل: إنشاء UID مختلف لمشاركة الشاشة (بإضافة 1 إلى الـ UID الأصلي)
+      final originalUid = FirebaseAuth.instance.currentUser!.uid.hashCode.abs() % 100000;
+      final screenShareUid = originalUid + 1;
+
       bool success = await SessionCheckService.toggleScreenShare(
         newState,
         sessionId: widget.sessionId,
       );
 
       if (success) {
-        final uid = FirebaseAuth.instance.currentUser!.uid.hashCode.abs() % 100000;
         setState(() {
           isScreenSharing = newState;
-          _screenShareUid = uid;
+          _screenShareUid = screenShareUid; // استخدام الـ UID الجديد هنا
         });
 
         await FirebaseFirestore.instance.collection('sessions').doc(widget.sessionId).update({
           'isScreenSharing': newState,
-          'screenShareUid': newState ? uid : 0,
+          'screenShareUid': newState ? screenShareUid : 0, // حفظ الـ UID الجديد في قاعدة البيانات
         });
 
         if (mounted) {
@@ -665,6 +669,10 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
                                 });
                                 if (_currentStroke.isNotEmpty) {
                                   final strokeToSave = List<DrawingPoint>.from(_currentStroke);
+
+                                  // ✨ الحل: مسح القائمة المحلية فوراً قبل إرسالها لفايربيز لمنع التداخل
+                                  _currentStroke.clear();
+
                                   FirebaseFirestore.instance
                                       .collection('sessions')
                                       .doc(widget.sessionId)
@@ -673,7 +681,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
                                     'points': strokeToSave.map((p) => p.toMap()).toList(),
                                     'createdAt': FieldValue.serverTimestamp(),
                                   }).then((_) {
-                                    _currentStroke.clear();
+                                    // تم الحفظ بنجاح
                                   }).catchError((e) {
                                     debugPrint("Error saving stroke: $e");
                                   });
