@@ -7,8 +7,9 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="منصة لبيب التعليمية التفاعلية">
 
-  <!-- ✨ تمت إضافة سياسات الأمان للسماح للمايكروفون والكاميرا بسيرفرات Agora بالعمل -->
+  <!-- سياسات الأمان للسماح للمايكروفون والكاميرا بسيرفرات Agora بالعمل -->
   <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; img-src * data:; media-src * blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://download.agora.io https://www.gstatic.com https://www.google.com https://apis.google.com; connect-src *; frame-src https://www.google.com;">
+
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="labeeb_wep">
@@ -19,49 +20,10 @@
   <title>منصة لبيب التعليمية</title>
   <link rel="manifest" href="manifest.json">
 
+  <!-- ✅ سكريبتات Agora الأساسية لضمان عمل المحرك (Iris Engine) على الويب -->
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
   <script src="https://download.agora.io/sdk/release/iris_web.js"></script>
 
-  <script>
-    let rtcClient = null;
-    let localScreenTrack = null;
-
-    // تعديل الدالة لتستقبل القيم بشكل ديناميكي من الفلاتر
-    async function initAgoraWebScreenShare(appId, channel, token, uid) {
-      if (!rtcClient) {
-        rtcClient = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
-      }
-
-      await rtcClient.setClientRole("host");
-
-      // الانضمام باستخدام التوكن والقناة الحية المستلمة من الفلاتر
-      await rtcClient.join(appId, channel, token, uid);
-
-      localScreenTrack = await AgoraRTC.createScreenVideoTrack({
-        encoderConfig: "1080p_1",
-        optimizationMode: "detail",
-      });
-
-      await rtcClient.publish(localScreenTrack);
-
-      localScreenTrack.on("track-ended", () => {
-        stopAgoraWebScreenShare();
-      });
-      return true;
-    }
-
-    async function stopAgoraWebScreenShare() {
-      if (localScreenTrack) {
-        localScreenTrack.stop();
-        localScreenTrack.close();
-        if (rtcClient) {
-          await rtcClient.unpublish(localScreenTrack);
-        }
-        localScreenTrack = null;
-      }
-      return false;
-    }
-  </script>
 </head>
 <body>
 <script src="flutter_bootstrap.js" async></script>
