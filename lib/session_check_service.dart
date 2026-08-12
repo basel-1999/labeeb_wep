@@ -83,6 +83,7 @@ class SessionCheckService {
   }
 
   /// 2. الانضمام إلى غرفة الصوت الخاصة بالجلسة
+  /// 2. الانضمام إلى غرفة الصوت الخاصة بالجلسة
   static Future<void> joinAudioChannel({
     required String sessionId,
     String? token,
@@ -93,6 +94,7 @@ class SessionCheckService {
         : DateTime.now().millisecondsSinceEpoch % 100000;
 
     final String activeToken = token ?? await fetchDynamicToken(channelName: sessionId, uid: numericUid);
+    print("Fetched Token: $activeToken"); // لطباعة التوكن للتأكد من نجاح جلبه
 
     if (_agoraEngine == null) {
       await initAudioEngine();
@@ -102,6 +104,10 @@ class SessionCheckService {
       await _agoraEngine!.setClientRole(
         role: ClientRoleType.clientRoleBroadcaster,
       );
+
+      // ✨ إجبار الصوت على التشغيل ورفع الكتم الذي يفرضه المتصفح
+      await _agoraEngine!.enableAudio();
+      await _agoraEngine!.muteLocalAudioStream(false);
 
       await _agoraEngine!.joinChannel(
         token: activeToken,
@@ -177,40 +183,18 @@ class SessionCheckService {
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة (يدعم الويب والموبايل بدون أكواد JS)
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   static Future<bool> toggleScreenShare(bool enable, {String sessionId = '', String? token}) async {
-    if (kIsWeb) {
-      try {
-        if (enable) {
-          final currentUser = _auth.currentUser;
-          final int numericUid = currentUser != null
-              ? currentUser.uid.hashCode.abs() % 100000
-              : DateTime.now().millisecondsSinceEpoch % 100000;
+    print("ToggleScreenShare called. Enable: $enable");
 
-          // ✨ الحل: تمرير UID مختلف (+1) لمشاركة الشاشة
-          final int screenShareUid = numericUid + 1;
-
-          final String activeToken = token ?? await fetchDynamicToken(channelName: sessionId, uid: screenShareUid);
-
-          final result = await _initAgoraWebScreenShare(
-            _agoraAppId.toJS,
-            sessionId.toJS,
-            activeToken.toJS,
-            screenShareUid.toDouble().toJS, // استخدام الـ UID الجديد
-          ).toDart;
-          return result.toDart;
-        } else {
-          await _stopAgoraWebScreenShare().toDart;
-          return false;
-        }
-      } catch (e) {
-        debugPrint("Web Screen Share JS Error: $e");
-        return !enable;
-      }
+    if (_agoraEngine == null) {
+      print("Agora Engine is NULL!");
+      return false;
     }
 
-    if (_agoraEngine == null) return false;
     try {
       if (enable) {
+        print("Starting screen capture...");
         await _agoraEngine!.startScreenCapture(
           const ScreenCaptureParameters2(
             captureVideo: true,
@@ -224,7 +208,9 @@ class SessionCheckService {
             publishMicrophoneTrack: true,
           ),
         );
+        print("Screen capture started successfully.");
       } else {
+        print("Stopping screen capture...");
         await _agoraEngine!.stopScreenCapture();
         await _agoraEngine!.updateChannelMediaOptions(
           const ChannelMediaOptions(
@@ -233,10 +219,11 @@ class SessionCheckService {
             publishMicrophoneTrack: true,
           ),
         );
+        print("Screen capture stopped successfully.");
       }
       return enable;
     } catch (e) {
-      debugPrint("Screen share exact error: $e");
+      print("Screen share exact error: $e");
       return !enable;
     }
   }
