@@ -7,6 +7,14 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'dart:js_interop';
+
+// استدعاءات الـ JavaScript الخارجية للويب الخاصة بمشاركة الشاشة
+@JS('initAgoraWebScreenShare')
+external JSPromise<JSBoolean> _initAgoraWebScreenShare(JSString appId, JSString channel, JSString token, JSNumber uid);
+
+@JS('stopAgoraWebScreenShare')
+external JSPromise<JSBoolean> _stopAgoraWebScreenShare();
 
 class SessionCheckService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -26,12 +34,17 @@ class SessionCheckService {
   static bool _isMuted = false;
 
   static bool get isMuted => _isMuted;
-  static RtcEngine? get agoraEngine => _agoraEngine;
+  static RtcEngine? get agoraEngine => _agoraEngine; // ✨ لإظهار الفيديو في الواجهة
 
+  /// 🛠️ دالة جلب Token ديناميكي من سيرفر Node.js
+  /// 🛠️ دالة جلب Token ديناميكي من سيرفر Node.js
+  /// 🛠️ دالة جلب Token ديناميكي من سيرفر Node.js
   /// 🛠️ دالة جلب Token ديناميكي من سيرفر Node.js
   static Future<String> fetchDynamicToken({required String channelName, required int uid}) async {
     try {
+      // ✨ رابط السيرفر الحقيقي على Render
       const String serverBaseUrl = 'https://agora-server-59qz.onrender.com';
+
       final String serverUrl = '$serverBaseUrl/rtc-token?channelName=$channelName&uid=$uid';
       final response = await http.get(Uri.parse(serverUrl));
 
@@ -54,58 +67,48 @@ class SessionCheckService {
     if (_agoraEngine != null) return;
 
     try {
-      print("🟢 1. Starting Agora Engine Initialization...");
       _agoraEngine = createAgoraRtcEngine();
-
-      // ✨ إزالة channelProfile من هنا لأنها تسبب خطأ Null check على الويب
       await _agoraEngine!.initialize(
         const RtcEngineContext(
           appId: _agoraAppId,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
         ),
       );
-      print("🟢 2. Engine Initialized Successfully.");
 
+      // ✨ يجب تفعيل الفيديو مع الصوت على الويب وإلا ينهار المحرك ويعطي خطأ Null check
       await _agoraEngine!.enableAudio();
-      print("🟢 3. Audio Enabled.");
-
+      await _agoraEngine!.enableVideo();
       await _agoraEngine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-      print("🟢 4. Role Set to Broadcaster.");
-    } catch (e, stackTrace) {
-      print("🔴 Agora initialization FAILED: $e");
-      print("🔴 STACK TRACE: $stackTrace");
-      _agoraEngine = null;
+    } catch (e) {
+      debugPrint("Agora initialization error: $e");
+      _agoraEngine = null; // إعادة تعيين المحرك في حال الفشل
     }
   }
 
+  /// 2. الانضمام إلى غرفة الصوت الخاصة بالجلسة
   /// 2. الانضمام إلى غرفة الصوت الخاصة بالجلسة
   static Future<void> joinAudioChannel({
     required String sessionId,
     String? token,
   }) async {
-    print("🔵 Attempting to join channel...");
-    if (_agoraEngine == null) {
-      print("🔵 Engine is null, initializing...");
-      await initAudioEngine();
-    }
-
-    if (_agoraEngine == null) {
-      print("🔴 Engine is STILL null. Aborting join.");
-      return;
-    }
-
     final currentUser = _auth.currentUser;
     final int numericUid = currentUser != null
         ? currentUser.uid.hashCode.abs() % 100000
         : DateTime.now().millisecondsSinceEpoch % 100000;
 
     final String activeToken = token ?? await fetchDynamicToken(channelName: sessionId, uid: numericUid);
-    print("🔵 Fetched Token: $activeToken");
+    print("Fetched Token: $activeToken"); // لطباعة التوكن للتأكد من نجاح جلبه
+
+    if (_agoraEngine == null) {
+      await initAudioEngine();
+    }
 
     try {
       await _agoraEngine!.setClientRole(
         role: ClientRoleType.clientRoleBroadcaster,
       );
 
+      // ✨ إجبار الصوت على التشغيل ورفع الكتم الذي يفرضه المتصفح
       await _agoraEngine!.enableAudio();
       await _agoraEngine!.muteLocalAudioStream(false);
 
@@ -124,9 +127,8 @@ class SessionCheckService {
         ),
       );
       _isMuted = false;
-      print("🟢 Successfully joined Agora channel!");
     } catch (e) {
-      print("🔴 Join Agora channel error: $e");
+      debugPrint("Join Agora channel error: $e");
     }
   }
 
@@ -181,28 +183,51 @@ class SessionCheckService {
     return _isMuted;
   }
 
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة (يدعم الويب والموبايل بدون أكواد JS)
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   static Future<bool> toggleScreenShare(bool enable, {String sessionId = '', String? token}) async {
-    print("🟡 Screen share button clicked. Enable: $enable");
-    if (_agoraEngine == null) {
-      print("🔴 Agora engine is null in toggleScreenShare!");
-      return false;
+    if (kIsWeb) {
+      try {
+        if (enable) {
+          final currentUser = _auth.currentUser;
+          final int numericUid = currentUser != null
+              ? currentUser.uid.hashCode.abs() % 100000
+              : DateTime.now().millisecondsSinceEpoch % 100000;
+
+          // ✨ UID مختلف (+1) لكي لا يتعارض مع UID الصوت
+          final int screenShareUid = numericUid + 1;
+          final String activeToken = token ?? await fetchDynamicToken(channelName: sessionId, uid: screenShareUid);
+
+          final result = await _initAgoraWebScreenShare(
+            _agoraAppId.toJS,
+            sessionId.toJS,
+            activeToken.toJS,
+            screenShareUid.toDouble().toJS,
+          ).toDart;
+          return result.toDart;
+        } else {
+          await _stopAgoraWebScreenShare().toDart;
+          return false;
+        }
+      } catch (e) {
+        debugPrint("Web Screen Share JS Error: $e");
+        return !enable;
+      }
     }
 
+    if (_agoraEngine == null) return false;
     try {
       if (enable) {
-        print("🟡 Enabling video for screen share...");
-        await _agoraEngine!.enableVideo();
-
-        print("🟡 Starting screen capture...");
         await _agoraEngine!.startScreenCapture(
           const ScreenCaptureParameters2(
             captureVideo: true,
             captureAudio: false,
           ),
         );
-
-        print("🟡 Updating channel media options...");
         await _agoraEngine!.updateChannelMediaOptions(
           const ChannelMediaOptions(
             publishScreenTrack: true,
@@ -210,8 +235,6 @@ class SessionCheckService {
             publishMicrophoneTrack: true,
           ),
         );
-        print("🟢 Screen share started successfully!");
-        return true;
       } else {
         await _agoraEngine!.stopScreenCapture();
         await _agoraEngine!.updateChannelMediaOptions(
@@ -221,11 +244,10 @@ class SessionCheckService {
             publishMicrophoneTrack: true,
           ),
         );
-        print("🟢 Screen share stopped.");
-        return false;
       }
+      return enable;
     } catch (e) {
-      print("🔴 Screen share exact error: $e");
+      debugPrint("Screen share exact error: $e");
       return !enable;
     }
   }
@@ -319,6 +341,7 @@ class SessionCheckService {
       throw Exception("يجب تسجيل الدخول أولاً لإنشاء طلب.");
     }
 
+    // ✨ نستخدم UID الخاص بالمستخدم الحالي مباشرة لضمان الأمان ومنع خطأ التطابق
     final String uid = currentUser.uid;
 
     final userRef = _firestore.collection('users').doc(uid);
@@ -342,7 +365,7 @@ class SessionCheckService {
 
     final sessionRef = _firestore.collection('sessions').doc();
     await sessionRef.set({
-      'studentId': uid,
+      'studentId': uid, // ✨ نحفظ الـ UID الحقيقي
       'studentName': studentName,
       'teacherId': null,
       'assignedTeacherId': null,
@@ -391,6 +414,9 @@ class SessionCheckService {
       }
     });
   }
+  // ==========================================
+  //  تمديد الحصة وخصم الرصيد الإضافي
+  // ==========================================
 
   static Future<void> extendSessionDuration({
     required String sessionId,
@@ -417,16 +443,17 @@ class SessionCheckService {
       throw Exception("رصيدك الحالي لا يكفي لتمديد الحصة. يرجى شحن المحفظة أولاً.");
     }
 
+    // خصم الرصيد
     await userRef.update({
       'sessionCredits': currentCredits - 1,
     });
 
+    // تسجيل التمديد في وثيقة الجلسة (لمتابعة الأدمن ولضمان عدم تكرار الخصم)
     await _firestore.collection('sessions').doc(sessionId).update({
       'extensionsCount': FieldValue.increment(1),
       'lastExtendedAt': FieldValue.serverTimestamp(),
     });
   }
-
   static Future<bool> acceptSession({
     required String sessionId,
     required String teacherId,
@@ -452,6 +479,7 @@ class SessionCheckService {
           'assignedTeacherId': teacherId,
           'status': 'accepted',
           'acceptedAt': FieldValue.serverTimestamp(),
+          // ✨ نستخدم الاسم الممرر مباشرة لضمان عدم الخلط
           'teacherName': teacherName,
           'teacher': teacherName,
           'instructorName': teacherName,
