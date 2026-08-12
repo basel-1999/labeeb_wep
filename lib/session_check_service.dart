@@ -49,16 +49,18 @@ class SessionCheckService {
   }
 
   /// 1. تهيئة محرك الاتصال الصوتي
+  /// 1. تهيئة محرك الاتصال الصوتي
   static Future<void> initAudioEngine() async {
     if (_agoraEngine != null) return;
 
     try {
       print("🟢 1. Starting Agora Engine Initialization...");
       _agoraEngine = createAgoraRtcEngine();
+
+      // ✨ إزالة channelProfile من هنا لأنها تسبب خطأ Null check على الويب
       await _agoraEngine!.initialize(
         const RtcEngineContext(
           appId: _agoraAppId,
-          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
         ),
       );
       print("🟢 2. Engine Initialized Successfully.");
