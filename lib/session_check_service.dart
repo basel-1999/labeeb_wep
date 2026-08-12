@@ -175,37 +175,12 @@ class SessionCheckService {
   }
 
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة (يدعم الويب والموبايل بدون أكواد JS)
   static Future<bool> toggleScreenShare(bool enable, {String sessionId = '', String? token}) async {
-    if (kIsWeb) {
-      try {
-        if (enable) {
-          final currentUser = _auth.currentUser;
-          final int numericUid = currentUser != null
-              ? currentUser.uid.hashCode.abs() % 100000
-              : DateTime.now().millisecondsSinceEpoch % 100000;
-
-          final String activeToken = token ?? await fetchDynamicToken(channelName: sessionId, uid: numericUid);
-
-          final result = await _initAgoraWebScreenShare(
-            _agoraAppId.toJS,
-            sessionId.toJS,
-            activeToken.toJS,
-            numericUid.toDouble().toJS,
-          ).toDart;
-          return result.toDart;
-        } else {
-          await _stopAgoraWebScreenShare().toDart;
-          return false;
-        }
-      } catch (e) {
-        debugPrint("Web Screen Share JS Error: $e");
-        return !enable;
-      }
-    }
-
     if (_agoraEngine == null) return false;
     try {
       if (enable) {
+        // تفعيل مشاركة الشاشة
         await _agoraEngine!.startScreenCapture(
           const ScreenCaptureParameters2(
             captureVideo: true,
@@ -216,10 +191,11 @@ class SessionCheckService {
           const ChannelMediaOptions(
             publishScreenTrack: true,
             publishCameraTrack: false,
-            publishMicrophoneTrack: true,
+            publishMicrophoneTrack: true, // إبقاء الصوت يعمل أثناء مشاركة الشاشة
           ),
         );
       } else {
+        // إيقاف مشاركة الشاشة
         await _agoraEngine!.stopScreenCapture();
         await _agoraEngine!.updateChannelMediaOptions(
           const ChannelMediaOptions(

@@ -335,24 +335,23 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
     try {
       bool newState = !isScreenSharing;
 
-      // ✨ الحل: إنشاء UID مختلف لمشاركة الشاشة (بإضافة 1 إلى الـ UID الأصلي)
-      final originalUid = FirebaseAuth.instance.currentUser!.uid.hashCode.abs() % 100000;
-      final screenShareUid = originalUid + 1;
-
       bool success = await SessionCheckService.toggleScreenShare(
         newState,
         sessionId: widget.sessionId,
       );
 
       if (success) {
+        // ✨ الحل: استخدام نفس UID المعلم لمشاركة الشاشة لأن Agora الحديث يدعم ذلك
+        final uid = FirebaseAuth.instance.currentUser!.uid.hashCode.abs() % 100000;
+
         setState(() {
           isScreenSharing = newState;
-          _screenShareUid = screenShareUid; // استخدام الـ UID الجديد هنا
+          _screenShareUid = uid;
         });
 
         await FirebaseFirestore.instance.collection('sessions').doc(widget.sessionId).update({
           'isScreenSharing': newState,
-          'screenShareUid': newState ? screenShareUid : 0, // حفظ الـ UID الجديد في قاعدة البيانات
+          'screenShareUid': newState ? uid : 0,
         });
 
         if (mounted) {
