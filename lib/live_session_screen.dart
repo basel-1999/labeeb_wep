@@ -332,7 +332,6 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
 
   Future<void> _toggleScreenShare() async {
     if (!widget.isTeacher) return;
-    print("Screen Share Button Clicked!"); // لنتأكد أن الزر يعمل
     try {
       bool newState = !isScreenSharing;
       bool success = await SessionCheckService.toggleScreenShare(
@@ -341,16 +340,19 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
       );
 
       if (success) {
-        final uid = FirebaseAuth.instance.currentUser!.uid.hashCode.abs() % 100000;
+        final originalUid = FirebaseAuth.instance.currentUser!.uid.hashCode.abs() % 100000;
+
+        // ✨ استقبال الفيديو بنفس الـ UID الجديد (+1)
+        final screenShareUid = originalUid + 1;
 
         setState(() {
           isScreenSharing = newState;
-          _screenShareUid = uid;
+          _screenShareUid = screenShareUid;
         });
 
         await FirebaseFirestore.instance.collection('sessions').doc(widget.sessionId).update({
           'isScreenSharing': newState,
-          'screenShareUid': newState ? uid : 0,
+          'screenShareUid': newState ? screenShareUid : 0,
         });
 
         if (mounted) {
@@ -365,11 +367,9 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
             ),
           );
         }
-      } else {
-        print("ToggleScreenShare returned false.");
       }
     } catch (e) {
-      print("Screen Share UI Error: $e");
+      debugPrint("Screen Share Error: $e");
       setState(() {
         isScreenSharing = false;
       });
