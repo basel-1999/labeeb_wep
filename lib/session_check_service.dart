@@ -7,7 +7,7 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
-import 'dart:js_interop';
+/* import 'dart:js_interop';
 
 // استدعاءات الـ JavaScript الخارجية للويب الخاصة بمشاركة الشاشة
 @JS('initAgoraWebScreenShare')
@@ -15,7 +15,7 @@ external JSPromise<JSBoolean> _initAgoraWebScreenShare(JSString appId, JSString 
 
 @JS('stopAgoraWebScreenShare')
 external JSPromise<JSBoolean> _stopAgoraWebScreenShare();
-
+*/
 class SessionCheckService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -189,39 +189,13 @@ class SessionCheckService {
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
+  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة (يدعم الويب والموبايل بدون أكواد JS)
   static Future<bool> toggleScreenShare(bool enable, {String sessionId = '', String? token}) async {
-    if (kIsWeb) {
-      try {
-        if (enable) {
-          final currentUser = _auth.currentUser;
-          final int numericUid = currentUser != null
-              ? currentUser.uid.hashCode.abs() % 100000
-              : DateTime.now().millisecondsSinceEpoch % 100000;
-
-          // ✨ UID مختلف (+1) لكي لا يتعارض مع UID الصوت
-          final int screenShareUid = numericUid + 1;
-          final String activeToken = token ?? await fetchDynamicToken(channelName: sessionId, uid: screenShareUid);
-
-          final result = await _initAgoraWebScreenShare(
-            _agoraAppId.toJS,
-            sessionId.toJS,
-            activeToken.toJS,
-            screenShareUid.toDouble().toJS,
-          ).toDart;
-          return result.toDart;
-        } else {
-          await _stopAgoraWebScreenShare().toDart;
-          return false;
-        }
-      } catch (e) {
-        debugPrint("Web Screen Share JS Error: $e");
-        return !enable;
-      }
-    }
-
     if (_agoraEngine == null) return false;
+
     try {
       if (enable) {
+        // 🟢 استخدام الـ SDK الأصلي للمتصفح (لا حاجة لأكواد JS)
         await _agoraEngine!.startScreenCapture(
           const ScreenCaptureParameters2(
             captureVideo: true,
@@ -235,6 +209,7 @@ class SessionCheckService {
             publishMicrophoneTrack: true,
           ),
         );
+        return true;
       } else {
         await _agoraEngine!.stopScreenCapture();
         await _agoraEngine!.updateChannelMediaOptions(
@@ -244,8 +219,8 @@ class SessionCheckService {
             publishMicrophoneTrack: true,
           ),
         );
+        return false;
       }
-      return enable;
     } catch (e) {
       debugPrint("Screen share exact error: $e");
       return !enable;

@@ -342,8 +342,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
       if (success) {
         final originalUid = FirebaseAuth.instance.currentUser!.uid.hashCode.abs() % 100000;
 
-        // ✨ استقبال الفيديو بنفس الـ UID الجديد (+1)
-        final screenShareUid = originalUid + 1;
+        final screenShareUid = originalUid;
 
         setState(() {
           isScreenSharing = newState;
