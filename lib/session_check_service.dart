@@ -70,8 +70,9 @@ class SessionCheckService {
 
       await _agoraEngine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
       print("🟢 4. Role Set to Broadcaster.");
-    } catch (e) {
+    } catch (e, stackTrace) {
       print("🔴 Agora initialization FAILED: $e");
+      print("🔴 STACK TRACE: $stackTrace");
       _agoraEngine = null;
     }
   }
