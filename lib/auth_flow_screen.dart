@@ -24,7 +24,7 @@ class AuthFlowScreen extends StatefulWidget {
 
 class _AuthFlowScreenState extends State<AuthFlowScreen> {
   final AuthService _authService = AuthService();
-  final CloudinaryService _cloudinaryService = CloudinaryService();
+
 
   int _currentStep = 0;
   bool _isSignUpMode = false;
@@ -138,8 +138,9 @@ class _AuthFlowScreenState extends State<AuthFlowScreen> {
         Uint8List fileBytes = result.files.single.bytes!;
         String fileName = result.files.single.name;
 
-        String? uploadedUrl = await _cloudinaryService.uploadFile(
-          fileBytes: fileBytes,
+        // ✨ استخدام الدالة الموحدة
+        String? uploadedUrl = await SessionCheckService.uploadToCloudinary(
+          bytes: fileBytes,
           fileName: fileName,
           folder: 'certificates',
         );
@@ -179,8 +180,9 @@ class _AuthFlowScreenState extends State<AuthFlowScreen> {
         Uint8List fileBytes = result.files.single.bytes!;
         String fileName = result.files.single.name;
 
-        String? uploadedUrl = await _cloudinaryService.uploadFile(
-          fileBytes: fileBytes,
+        // ✨ استخدام الدالة الموحدة
+        String? uploadedUrl = await SessionCheckService.uploadToCloudinary(
+          bytes: fileBytes,
           fileName: fileName,
           folder: 'identity_documents',
         );
@@ -1350,48 +1352,5 @@ class _AuthFlowScreenState extends State<AuthFlowScreen> {
         ),
       ),
     );
-  }
-}
-
-// ==========================================
-// 2. كلاس خدمة Cloudinary (مدمج مباشرة بالأسفل)
-// ==========================================
-class CloudinaryService {
-  static const String _cloudName = 'f4t8ayoq';
-  static const String _uploadPreset = 'lzgw58tq';
-
-  Future<String?> uploadFile({
-    required Uint8List fileBytes,
-    required String fileName,
-    String folder = 'certificates',
-  }) async {
-    try {
-      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$_cloudName/auto/upload');
-
-      var request = http.MultipartRequest('POST', uri)
-        ..fields['upload_preset'] = _uploadPreset
-        ..fields['folder'] = folder
-        ..files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            fileBytes,
-            filename: fileName,
-          ),
-        );
-
-      var response = await request.send();
-
-      if (response.statusCode == 200) {
-        final responseData = await response.stream.bytesToString();
-        final jsonMap = jsonDecode(responseData);
-        return jsonMap['secure_url'] as String?;
-      } else {
-        debugPrint('Cloudinary Error: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      debugPrint('Cloudinary Exception: $e');
-      return null;
-    }
   }
 }

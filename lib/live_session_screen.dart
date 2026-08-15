@@ -81,6 +81,9 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
   StreamSubscription<DocumentSnapshot>? _sessionSubscription;
   List<DrawingPoint> _currentStroke = [];
   List<String> _strokeDocIds = [];
+  StreamSubscription<html.Event>? _onBeforeUnloadSub;
+
+
 
   @override
   void initState() {
@@ -90,9 +93,8 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
     _listenToWhiteboard();
     _listenToSessionState();
 
-    // ✨ إضافة مستمع لإغلاق النافذة فجأة
-    html.window.onBeforeUnload.listen((event) {
-      // تحديث حالة الجلسة إلى مكتملة إذا أُغلقت الصفحة بالخطأ
+    // ✨ إضافة مستمع لإغلاق النافذة فجأة (مع تخزينه لتنظيفه لاحقاً)
+    _onBeforeUnloadSub = html.window.onBeforeUnload.listen((event) {
       FirebaseFirestore.instance.collection('sessions').doc(widget.sessionId).update({
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
@@ -108,6 +110,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
     _releaseAudioResources();
     _strokesSubscription?.cancel();
     _sessionSubscription?.cancel();
+    _onBeforeUnloadSub?.cancel(); // ✨ تنظيف المستمع لمنع تسريب الذاكرة
     super.dispose();
   }
 

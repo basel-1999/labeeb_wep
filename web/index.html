@@ -34,8 +34,11 @@
 
       await rtcClient.setClientRole("host");
 
-      // الانضمام باستخدام التوكن والقناة الحية المستلمة من الفلاتر
-      await rtcClient.join(appId, channel, token, uid);
+      // ✨ التعديل هنا: التحقق من حالة الاتصال قبل محاولة الانضمام
+      // لمنع خطأ "Client already in connecting/connected state"
+      if (rtcClient.connectionState === "DISCONNECTED") {
+        await rtcClient.join(appId, channel, token, uid);
+      }
 
       localScreenTrack = await AgoraRTC.createScreenVideoTrack({
         encoderConfig: "1080p_1",
@@ -55,13 +58,21 @@
         localScreenTrack.stop();
         localScreenTrack.close();
         if (rtcClient) {
-          await rtcClient.unpublish(localScreenTrack);
+          try {
+            await rtcClient.unpublish(localScreenTrack);
+            // ✨ التعديل هنا: مغادرة القناة لتتمكن من الدخول مجدداً لاحقاً
+            await rtcClient.leave();
+          } catch (e) {
+            console.error("Error during unpublish/leave:", e);
+          }
         }
         localScreenTrack = null;
+        rtcClient = null; // إعادة تعيين العميل
       }
       return false;
     }
   </script>
+
 </head>
 <body>
 <script src="flutter_bootstrap.js" async></script>

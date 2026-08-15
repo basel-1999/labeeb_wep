@@ -50,10 +50,12 @@ final GoRouter appRouter = GoRouter(
     ),
 
     // 4️⃣ لوحة تحكم الطالب
+    // 4️⃣ لوحة تحكم الطالب
     GoRoute(
       path: '/student-dashboard',
       builder: (context, state) {
-        final studentUid = state.uri.queryParameters['uid'] ?? FirebaseAuth.instance.currentUser!.uid;
+        // 🔒 إصلاح أمني: نتجاهل أي uid من الرابط ونجلبه مباشرة من Firebase
+        final studentUid = FirebaseAuth.instance.currentUser?.uid ?? 'GUEST_USER';
         final studentName = state.uri.queryParameters['name'] ?? 'طالب لبيب';
         final subject = state.uri.queryParameters['subject'] ?? 'الرياضيات';
         final bookingType = state.uri.queryParameters['type'] ?? 'مباشر';

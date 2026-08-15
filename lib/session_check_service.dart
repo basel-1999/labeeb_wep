@@ -97,7 +97,6 @@ class SessionCheckService {
         : DateTime.now().millisecondsSinceEpoch % 100000;
 
     final String activeToken = token ?? await fetchDynamicToken(channelName: sessionId, uid: numericUid);
-    print("Fetched Token: $activeToken"); // لطباعة التوكن للتأكد من نجاح جلبه
 
     if (_agoraEngine == null) {
       await initAudioEngine();
@@ -183,11 +182,6 @@ class SessionCheckService {
     return _isMuted;
   }
 
-  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
-  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة (يدعم الويب والموبايل بدون أكواد JS)
-  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
-  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
-  /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   /// 3. ب - تفعيل أو إيقاف مشاركة الشاشة
   static Future<bool> toggleScreenShare(bool enable, {String sessionId = '', String? token}) async {
     if (kIsWeb) {
@@ -503,23 +497,32 @@ class SessionCheckService {
   //  رفع الملفات إلى Cloudinary وإنهاء الجلسة
   // ==========================================
 
-  static Future<String?> _uploadBytesToCloudinary({
+
+  // ✨ أصبحت Public وتدعم إرسال الملفات إلى مجلدات مخصصة
+  static Future<String?> uploadToCloudinary({
     required Uint8List bytes,
     required String fileName,
-    required String resourceType,
+    String resourceType = 'auto',
+    String folder = '',
   }) async {
     try {
       final url = Uri.parse("https://api.cloudinary.com/v1_1/$_cloudinaryCloudName/$resourceType/upload");
 
       final request = http.MultipartRequest('POST', url)
-        ..fields['upload_preset'] = _cloudinaryUploadPreset
-        ..files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            bytes,
-            filename: fileName,
-          ),
-        );
+        ..fields['upload_preset'] = _cloudinaryUploadPreset;
+
+      // إضافة المجلد إذا تم تمريره (مثل: certificates أو identity_documents)
+      if (folder.isNotEmpty) {
+        request.fields['folder'] = folder;
+      }
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: fileName,
+        ),
+      );
 
       final response = await request.send();
       if (response.statusCode == 200) {
@@ -539,7 +542,7 @@ class SessionCheckService {
     required String sessionId,
     required Uint8List audioBytes,
   }) async {
-    return await _uploadBytesToCloudinary(
+    return await uploadToCloudinary( // ✨ تم تحديث المسار
       bytes: audioBytes,
       fileName: 'session_${sessionId}_audio.mp3',
       resourceType: 'video',
@@ -550,7 +553,7 @@ class SessionCheckService {
     required String sessionId,
     required Uint8List pdfBytes,
   }) async {
-    return await _uploadBytesToCloudinary(
+    return await uploadToCloudinary( // ✨ تم تحديث المسار
       bytes: pdfBytes,
       fileName: 'session_${sessionId}_board.pdf',
       resourceType: 'auto',

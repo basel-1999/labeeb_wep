@@ -26,8 +26,8 @@ class TeacherDashboardScreen extends StatefulWidget {
 }
 
 class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
-  Timer? _refreshTimer;
   StreamSubscription<QuerySnapshot>? _sessionsSubscription;
+
 
   // 📚 حالة المعلم وتسجيل البيانات
   bool _isLoadingProfile = true;
@@ -48,12 +48,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   void initState() {
     super.initState();
     _checkTeacherAccount();
-
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
   }
 
   // 🔍 فحص هل للمعلم حساب في Firestore وإذا كان معتمداً يتم تفعيل الاستماع الحي للطلبات
@@ -164,33 +158,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
     });
   }
 
-  // ☁️ دالة رفع الشهادة مباشرة إلى Cloudinary
-  Future<String?> _uploadCertificateToCloudinary(Uint8List bytes, String fileName) async {
-    try {
-      const String cloudName = 'f4t8ayoq';
-      const String uploadPreset = 'lzgw58tq';
 
-      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/auto/upload');
-      final request = http.MultipartRequest('POST', uri)
-        ..fields['upload_preset'] = uploadPreset
-        ..files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: fileName,
-        ));
-
-      final response = await request.send();
-      if (response.statusCode == 200) {
-        final responseData = await response.stream.bytesToString();
-        final jsonMap = jsonDecode(responseData);
-        return jsonMap['secure_url'] as String?;
-      } else {
-        return null;
-      }
-    } catch (e) {
-      return null;
-    }
-  }
 
   // 📤 رفع الشهادة وحفظ بيانات المعلم
   Future<void> _submitRegistration() async {
@@ -208,9 +176,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
       final user = FirebaseAuth.instance.currentUser;
       final uid = user?.uid ?? DateTime.now().millisecondsSinceEpoch.toString();
 
-      final String? certificateUrl = await _uploadCertificateToCloudinary(
-        _certificateBytes!,
-        _certificateFileName ?? 'certificate.pdf',
+      // ✨ استخدام الدالة الموحدة
+      final String? certificateUrl = await SessionCheckService.uploadToCloudinary(
+        bytes: _certificateBytes!,
+        fileName: _certificateFileName ?? 'certificate.pdf',
+        folder: 'certificates',
       );
 
       if (certificateUrl == null) {
@@ -256,7 +226,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     _sessionsSubscription?.cancel();
     _subjectController.dispose();
     _experienceController.dispose();
